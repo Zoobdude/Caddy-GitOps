@@ -3,7 +3,6 @@ package main
 import (
 	"log/slog"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 )
@@ -26,17 +25,20 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 
 	requestStart := time.Now()
 
-	cloneConfigRepository(os.Getenv("GIT_REPO"), os.Getenv("AUTHENTICATION_TYPE"))
-
-	err := loadConfig("http://localhost:2019", readConfigFile("Caddyfile"), "caddyfile")
+	err := reloadConfiguration()
 	if err != nil {
-		http.Error(w, "Failed to load configuration", http.StatusInternalServerError)
-		slog.Error("❌ Error loading configuration", "error", err)
+		httpResponseAndLog(w, "Failed to reload configuration: "+err.Error())
 		return
 	}
+
 	elapsed := time.Since(requestStart)
 	slog.Info("✅ Configuration loaded successfully", "elapsed", elapsed)
 	w.Write([]byte("Configuration loaded in " + elapsed.String()))
+}
+
+func httpResponseAndLog(w http.ResponseWriter, message string) {
+	http.Error(w, message, http.StatusInternalServerError)
+	slog.Error("❌ " + message)
 }
 
 var sharedHealthCheckKey string

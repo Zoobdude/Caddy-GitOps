@@ -9,17 +9,63 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 )
 
+var reloadMutex sync.Mutex
+
+func reloadConfiguration() error {
+	if !reloadMutex.TryLock() {
+		slog.Info("Config reload in prog...")
+		return fmt.Errorf("configuration reload already in progress")
+	}
+	defer reloadMutex.Unlock()
+
+	slog.Info("🔄 Reloading Caddy configuration...")
+	gitRepo := os.Getenv("GIT_REPO")
+	if gitRepo == "" {
+		return fmt.Errorf("GIT_REPO environment variable not set")
+	}
+
+	authType := os.Getenv("AUTHENTICATION_TYPE")
+	if authType == "" {
+		return fmt.Errorf("AUTHENTICATION_TYPE environment variable not set")
+	}
+
+	caddyAPI := os.Getenv("CADDY_API")
+	if caddyAPI == "" {
+		return fmt.Errorf("CADDY_API environment variable not set")
+	}
+
+	configFilePath := os.Getenv("CONFIG_FILE_PATH")
+	if configFilePath == "" {
+		return fmt.Errorf("CONFIG_FILE_PATH environment variable not set")
+	}
+
+	configFileType := os.Getenv("CONFIG_FILE_TYPE")
+	if configFileType == "" {
+		return fmt.Errorf("CONFIG_FILE_TYPE environment variable not set")
+	}
+
+	cloneConfigRepository(gitRepo, authType)
+
+	configContent := readConfigFile(configFilePath)
+
+	err := loadConfig(caddyAPI, configContent, configFileType)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func loadConfig(caddyURL string, configValue string, configType string) error {
-	slog.Info("🔃 Loading Caddy configuration...")
+	slog.Info("📨 Sending configuration to Caddy...")
 	slog.Debug("🔍 Caddy configuration details", "url", caddyURL, "config", configValue, "type", configType)
 
 	configData := bytes.NewBuffer([]byte(configValue))
 
 	resp, err := http.Post(caddyURL+"/load", "application/"+configType, configData)
 	if err != nil {
-		slog.Error("❌ Failed to load Caddy configuration", "error", err)
 		return fmt.Errorf("Failed to load Caddy configuration: %w", err)
 	}
 	defer resp.Body.Close()
@@ -28,7 +74,6 @@ func loadConfig(caddyURL string, configValue string, configType string) error {
 	body, err := io.ReadAll(resp.Body)
 
 	if err != nil {
-		slog.Error("❌ Failed to read Caddy API response", "error", err)
 		return fmt.Errorf("failed to read Caddy API response: %w", err)
 	}
 

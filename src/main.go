@@ -7,10 +7,6 @@ import (
 	"syscall"
 )
 
-var (
-	healthKey = make(chan string, 1) // Channel to hold health check key
-)
-
 func main() {
 	slog.SetLogLoggerLevel(slog.LevelDebug)
 
