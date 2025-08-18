@@ -8,3 +8,8 @@ dev:
 build-bin:
     go build -o caddy-gitops ./src
 
+build-docker:
+    docker build -t caddy-gitops:latest .
+
+run-docker:
+    docker run -p 2020:2020 --env-file .env caddy-gitops:latest

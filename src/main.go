@@ -8,7 +8,9 @@ import (
 )
 
 func main() {
-	slog.SetLogLoggerLevel(slog.LevelDebug)
+	if os.Getenv("DEBUG") == "true" {
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+	}
 
 	slog.Info("🚀 Starting Caddy GitOps...")
 	// Start server in a goroutine

@@ -123,7 +123,7 @@ func cloneConfigRepository(gitURL string, authType string) error {
 		return err
 	}
 
-	slog.Info("🔗 Cloning Git repository", "url", gitURL)
+	slog.Debug("🔗 Cloning Git repository", "url", gitURL)
 
 	authType = strings.ToLower(authType)
 	switch authType {

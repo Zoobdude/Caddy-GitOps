@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -22,7 +23,7 @@ func healthy() bool {
 	healthCheckKeyMutex.Unlock()
 
 	requestURL := healthCheckEndpoint + "/health?key=" + string(sharedHealthCheckKey)
-	slog.Info("🔗 Health check URL: " + requestURL)
+	slog.Debug("🔗 Health check URL: " + requestURL)
 	resp, err := http.Get(requestURL)
 
 	if err != nil {
@@ -38,18 +39,17 @@ func healthy() bool {
 	}
 	defer resp.Body.Close()
 
-	slog.Info("✅ Health check passed")
 	return true
 }
 
 func healthCheck() {
 	healthStatus := true
 
-	healthyInterval := 30 * time.Second // Default value
+	healthyInterval := secondsFromEnv("HEALTHCHECK_HEALTHY_INTERVAL", 30)
 
-	unhealthyInterval := 5 * time.Millisecond // Default value}
+	unhealthyInterval := secondsFromEnv("HEALTHCHECK_UNHEALTHY_INTERVAL", 5)
 
-	slog.Info("🔧 Health check configuration",
+	slog.Debug("🔧 Health check configuration",
 		"healthy_interval", healthyInterval,
 		"unhealthy_interval", unhealthyInterval)
 
@@ -69,7 +69,7 @@ func healthCheck() {
 					slog.Info("✅ Configuration reloaded successfully")
 				}
 
-				//time.Sleep(unhealthyInterval)
+				time.Sleep(unhealthyInterval)
 			}
 		}
 
@@ -82,4 +82,18 @@ func healthCheck() {
 			time.Sleep(healthyInterval)
 		}
 	}
+}
+
+func secondsFromEnv(envVar string, defaultValue int) time.Duration {
+	value := os.Getenv(envVar)
+	if value == "" {
+		return time.Duration(defaultValue) * time.Second
+	}
+
+	seconds, err := strconv.Atoi(value)
+	if err != nil {
+		slog.Error("❌ Invalid value for "+envVar, "error", err)
+		return time.Duration(defaultValue) * time.Second
+	}
+	return time.Duration(seconds) * time.Second
 }
