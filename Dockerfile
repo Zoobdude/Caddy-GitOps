@@ -10,8 +10,8 @@ RUN go mod download
 # Copy the source code
 COPY ./src .
 
-# Build the Go app
-RUN go build -o caddy-gitops .
+# Build the Go app as a static binary
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o caddy-gitops .
 
 # Use a minimal image for running
 FROM alpine:latest
